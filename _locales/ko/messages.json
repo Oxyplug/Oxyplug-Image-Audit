@@ -4,7 +4,7 @@
     "description": "The name of the extension."
   },
   "extensionDescription": {
-    "message": "Audit your page images for SEO & performance: alt text, dimensions, file size, next-gen formats, lazy loading and LCP.",
+    "message": "페이지 이미지 점검: alt, 크기, 파일 용량, 차세대 포맷, 지연 로딩, LCP.",
     "description": "The description of the extension shown in the Chrome Web Store."
   }
 }

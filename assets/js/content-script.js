@@ -4,6 +4,8 @@ class ContentScript {
   static scrollables = [];
   static scrollableIndex = 0;
   static rtl = false;
+  // Safety backstop (px) applied only in "Unlimited" mode (max_scrolling === 0).
+  // In "Limited" mode the user-configured max (capped at 15000 in the popup) is used instead.
   static oxyplugScrollLimit = 50000;
 
   /**
@@ -646,7 +648,7 @@ class ContentScript {
       try {
         const spanXs = await Common.getElements('.oxyplug-tech-seo-highlight');
         spanXs.forEach((spanX) => {
-          const img = spanX.previousSibling;
+          const img = spanX.previousElementSibling;
           if (img) {
             if (img.dataset && img.dataset.oxyplug_tech_i) {
               const i = img.dataset.oxyplug_tech_i;
@@ -882,8 +884,8 @@ class ContentScript {
           highlight.style.setProperty('color', XColorAll, 'important');
         });
 
-        if (el) {
-          const nextSibling = el.nextSibling;
+        const nextSibling = el ? el.nextElementSibling : null;
+        if (el && nextSibling) {
           nextSibling.classList.add('oxyplug-tech-seo-highlighted');
           let XColor = await Common.getLocalStorage('x_color');
           XColor = XColor ? XColor.toString() : '#ff0000';

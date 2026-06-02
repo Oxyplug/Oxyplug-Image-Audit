@@ -1,6 +1,7 @@
 class Common {
   static hostLearnMores = [];
   static learnMores;
+  static port = null;
 
   /**
    * Make modal actions
@@ -146,99 +147,89 @@ class Common {
    * @returns {Promise<unknown>}
    */
   static async getLocalStorage(key) {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(key, resolve);
-    })
-      .then(response => {
-        return response[key];
-      })
-      .catch(() => {
-        return null
-      });
-  };
+    try {
+      const response = await chrome.storage.local.get(key);
+      return response[key];
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
 
   /**
    * Set local storage
    * @param object
-   * @returns {Promise<unknown>}
+   * @returns {Promise<boolean>}
    */
   static async setLocalStorage(object) {
-    return new Promise((resolve, reject) => {
-      chrome.storage.local.set(object, () => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve();
-        }
-      });
-    })
-      .then(() => {
-        return true;
-      })
-      .catch(() => {
-        return false
-      });
-  };
+    try {
+      await chrome.storage.local.set(object);
+      return true;
+    } catch (error) {
+      console.log(error);
+      return false;
+    }
+  }
 
   /**
    * Get element
    * @param query
-   * @returns {Promise<unknown>}
+   * @returns {Promise<Element|null>}
    */
   static async getElement(query) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const element = await document.querySelector(query);
-        resolve(element);
-      } catch (error) {
-        console.log(error);
-        reject(error);
-      }
-    })
-      .then((response) => {
-        return response;
-      });
-  };
+    try {
+      return document.querySelector(query);
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
 
   /**
    * Get elements
    * @param query
-   * @returns {Promise<unknown>}
+   * @returns {Promise<NodeListOf<Element>|Array>}
    */
   static async getElements(query) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const elements = await document.querySelectorAll(query);
-        resolve(elements);
-      } catch (error) {
-        console.log(error);
-        reject(error)
-      }
-    });
-  };
+    try {
+      return document.querySelectorAll(query);
+    } catch (error) {
+      console.log(error);
+      return [];
+    }
+  }
 
   /**
    * Get current tab
-   * @returns {Promise<chrome.tabs.Tab>}
+   * @returns {Promise<chrome.tabs.Tab|false>}
    */
   static async getCurrentTab() {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const queryOptions = {active: true, currentWindow: true};
-        const [tab] = await chrome.tabs.query(queryOptions);
+    try {
+      const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+      return tab;
+    } catch (error) {
+      console.log(error);
+      return false;
+    }
+  }
 
-        resolve(tab);
+  /**
+   * Get (lazily creating) the shared messaging port and self-heal on disconnect.
+   * @returns {chrome.runtime.Port|null}
+   */
+  static getPort() {
+    if (!Common.port) {
+      try {
+        Common.port = chrome.runtime.connect({name: 'oxyplug-tech-seo-audit'});
+        Common.port.onDisconnect.addListener(() => {
+          Common.port = null;
+        });
       } catch (error) {
         console.log(error);
-        reject(false);
+        Common.port = null;
       }
-    })
-      .then(response => {
-        return response;
-      })
-      .catch(response => {
-        return response;
-      });
+    }
+    return Common.port;
   }
 
   /**
@@ -248,36 +239,35 @@ class Common {
    * @returns {Promise<void>}
    */
   static async log(text, currentHost = location.host) {
-    return new Promise(async (resolve, reject) => {
-      try {
-
-        const addLog = (logs, text) => {
-          // Add to localStorage
-          Common.setLocalStorage({logs});
-
-          // Send the log to popup
-          Common.port = chrome.runtime.connect({name: 'oxyplug-tech-seo-audit'});
-          Common.port.postMessage({log: text});
-        }
-
-        let logs = await Common.getLocalStorage('logs');
-        if (!logs || Object.keys(logs).length === 0) {
-          logs = {[currentHost]: [text]};
-          await addLog(logs, text);
-        } else if (!logs[currentHost]) {
-          logs[currentHost] = [text];
-          await addLog(logs, text);
-        } else if (!logs[currentHost].includes(text)) {
-          logs[currentHost].push(text);
-          await addLog(logs, text);
-        }
-
-        resolve();
-      } catch (error) {
-        console.log(error);
-        reject(error);
+    try {
+      let logs = await Common.getLocalStorage('logs');
+      if (!logs || Object.keys(logs).length === 0) {
+        logs = {[currentHost]: [text]};
+      } else if (!logs[currentHost]) {
+        logs[currentHost] = [text];
+      } else if (!logs[currentHost].includes(text)) {
+        logs[currentHost].push(text);
+      } else {
+        // Duplicate log line; nothing new to store or send.
+        return;
       }
-    });
+
+      // Add to localStorage
+      await Common.setLocalStorage({logs});
+
+      // Send the log to popup over the shared port
+      const port = Common.getPort();
+      if (port) {
+        try {
+          port.postMessage({log: text});
+        } catch (error) {
+          // Receiver gone; drop the port so the next log re-establishes it.
+          Common.port = null;
+        }
+      }
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   /**
@@ -295,67 +285,60 @@ class Common {
 
   /**
    * Get learn mores
-   * @returns {Promise<unknown>}
+   * @returns {Promise<void>}
    */
   static async setLearnMores(host) {
-    return new Promise(resolve => {
-      if (!Common.hostLearnMores || !Common.hostLearnMores[host]) {
-        const utmLink = `https://www.oxyplug.com/docs/oxy-seo-audit/audit-definitions/?utm_source=${host}&utm_medium=chrome-extension&utm_campaign=`;
-        Common.learnMores = Common.hostLearnMores[host] = {
-          'utm-link': utmLink,
-          'issues': {
-            'loadFailsIssue': {
-              'load-fails': "The image fails to load with http status code of X.",
-            },
-            'srcIssue': {
-              'src': "Without src attribute.",
-            },
-            'altIssue': {
-              'alt': "Without alt attribute.",
-              'alt-length': "The alt attribute length is more than X characters.",
-            },
-            'widthIssue': {
-              'width': "Without width attribute.",
-            },
-            'heightIssue': {
-              'height': "Without height attribute.",
-            },
-            'renderedSizeIssue': {
-              'rendered-size': "The rendered image dimensions don't equal the original image dimensions.",
-            },
-            'aspectRatioIssue': {
-              'aspect-ratio': "The aspect-ratio of the rendered image doesn't equal the aspect-ratio of the original image.",
-            },
-            'filesizeIssue': {
-              'filesize': "The image filesize is bigger than X KB.",
-            },
-            'nxIssue': {
-              'nx': "No 2x image found for DPR 2 devices.",
-            },
-            'nextGenFormatsIssue': {
-              'next-gen-formats': "The next-gen (WebP, AVIF) is not provided.",
-            },
-            'lazyLoadIssue': {
-              'lazy-load': "The loading attribute doesn't equal `lazy`.",
-              'eager-load': "The loading attribute of LCP image doesn't equal `eager`.",
-            },
-            'preloadLcpIssue': {
-              'lcp-preload': "The LCP (Image) is not preloaded with link tag.",
-            },
-            'lcpIssue': {
-              'lcp': "The LCP shows the largest image above the fold.",
-            },
-            'decodingIssue': {
-              'decoding': "Having `decoding=\"sync\"` for LCP image is recommended.",
-            },
-          }
-        };
-      }
-      resolve();
-    })
-      .catch(error => {
-        console.log(error);
-        return error;
-      });
+    if (!Common.hostLearnMores || !Common.hostLearnMores[host]) {
+      const utmLink = `https://www.oxyplug.com/docs/oxy-seo-audit/audit-definitions/?utm_source=${host}&utm_medium=chrome-extension&utm_campaign=`;
+      Common.learnMores = Common.hostLearnMores[host] = {
+        'utm-link': utmLink,
+        'issues': {
+          'loadFailsIssue': {
+            'load-fails': "The image fails to load with http status code of X.",
+          },
+          'srcIssue': {
+            'src': "Without src attribute.",
+          },
+          'altIssue': {
+            'alt': "Without alt attribute.",
+            'alt-length': "The alt attribute length is more than X characters.",
+          },
+          'widthIssue': {
+            'width': "Without width attribute.",
+          },
+          'heightIssue': {
+            'height': "Without height attribute.",
+          },
+          'renderedSizeIssue': {
+            'rendered-size': "The rendered image dimensions don't equal the original image dimensions.",
+          },
+          'aspectRatioIssue': {
+            'aspect-ratio': "The aspect-ratio of the rendered image doesn't equal the aspect-ratio of the original image.",
+          },
+          'filesizeIssue': {
+            'filesize': "The image filesize is bigger than X KB.",
+          },
+          'nxIssue': {
+            'nx': "No 2x image found for DPR 2 devices.",
+          },
+          'nextGenFormatsIssue': {
+            'next-gen-formats': "The next-gen (WebP, AVIF) is not provided.",
+          },
+          'lazyLoadIssue': {
+            'lazy-load': "The loading attribute doesn't equal `lazy`.",
+            'eager-load': "The loading attribute of LCP image doesn't equal `eager`.",
+          },
+          'preloadLcpIssue': {
+            'lcp-preload': "The LCP (Image) is not preloaded with link tag.",
+          },
+          'lcpIssue': {
+            'lcp': "The LCP shows the largest image above the fold.",
+          },
+          'decodingIssue': {
+            'decoding': "Having `decoding=\"sync\"` for LCP image is recommended.",
+          },
+        }
+      };
+    }
   }
 }

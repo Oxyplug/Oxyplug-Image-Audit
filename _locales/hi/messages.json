@@ -1,0 +1,10 @@
+{
+  "extensionName": {
+    "message": "Oxyplug - Technical SEO Audit",
+    "description": "The name of the extension."
+  },
+  "extensionDescription": {
+    "message": "अपने पेज की इमेज ऑडिट करें: alt, आकार, फ़ाइल साइज़, नेक्स्ट-जेन फ़ॉर्मैट, लेज़ी-लोडिंग और LCP।",
+    "description": "The description of the extension shown in the Chrome Web Store."
+  }
+}

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Oxyplug - Technical SEO Audit",
+  "name": "__MSG_extensionName__",
   "version": "1.0.0",
   "action": {
     "default_icon": {
@@ -13,7 +13,7 @@
     "default_popup": "popup.html"
   },
   "default_locale": "en",
-  "description": "Find bugs on your page based on Google Lighthouse",
+  "description": "__MSG_extensionDescription__",
   "icons": {
     "16": "/assets/icons/16.png",
     "32": "/assets/icons/32.png",
@@ -44,12 +44,6 @@
   "background": {
     "service_worker": "background.js"
   },
-  "externally_connectable": {
-    "matches": [
-      "http://*/*",
-      "https://*/*"
-    ]
-  },
   "host_permissions": [
     "http://*/*",
     "https://*/*"
@@ -59,7 +53,6 @@
     "webRequest"
   ],
   "short_name": "Technical SEO",
-  "update_url": "https://www.oxyplug.com/extensions/Technical-SEO-Audit/update-info.xml",
   "web_accessible_resources": [
     {
       "resources": [
