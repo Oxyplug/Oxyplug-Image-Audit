@@ -1,5 +1,5 @@
 
-# Oxyplug - Technical SEO Audit
+# Oxyplug - Image Audit
 
 This extension is used for SEO purposes. (Only images for now)
 
@@ -26,10 +26,10 @@ The extension will display the issues the images might have:
 - The LCP image doesn't have decoding="sync"
 ## A Glance
 
-![Oxyplug - Technical SEO Audit Demo](https://www.oxyplug.com/wp-content/uploads/2024/04/oxyplug-technical-seo-audit.png)
+![Oxyplug - Image Audit Demo](https://www.oxyplug.com/wp-content/uploads/2024/04/oxyplug-technical-seo-audit.png)
 ## Installation
 
-- 1. Download the extension form here [Technical SEO Audit](https://www.oxyplug.com/wp-content/uploads/Technical-SEO-Audit.crx)
+- 1. Download the extension form here [Image Audit](https://www.oxyplug.com/wp-content/uploads/Technical-SEO-Audit.crx)
 - 2. Open your Chrome browser.
 - 3. Go to extensions page or enter `chrome://extensions` in your address bar and hit enter.
 - 4. Drag and drop the downloaded extension to the extension page.

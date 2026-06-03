@@ -326,7 +326,7 @@ class Popup {
 
                       await Popup.loadList(request.issues);
                       await Popup.renameStart('Restart');
-                      Popup.stop.disable = false;
+                      Popup.stop.disabled = false;
                       Popup.purgeReload.disabled = false;
                       await Popup.highlightActiveUrl();
                       await Popup.highlightActiveFilter();
@@ -352,7 +352,7 @@ class Popup {
         });
 
         if (Popup.issues && Object.keys(Popup.issues).length) {
-          Popup.stop.disable = false;
+          Popup.stop.disabled = false;
         }
 
         // Navigation between the pages
@@ -456,7 +456,13 @@ class Popup {
         e.stopPropagation();
         if (!window.myWindow || window.myWindow.closed) {
           window.myWindow = window.open('');
-          myWindow.document.write(`<img src="${completeSrc}" />`);
+          if (window.myWindow) {
+            // Build the node directly instead of document.write to avoid
+            // injecting markup from an untrusted (page-derived) src.
+            const img = window.myWindow.document.createElement('img');
+            img.src = completeSrc;
+            window.myWindow.document.body.appendChild(img);
+          }
         } else {
           window.myWindow.focus();
         }

@@ -91,8 +91,11 @@ class Audit {
               imgLoaded = true;
             }
 
-            while (imgLoaded === false) {
+            // Cap the wait so a cached/never-resolving image can't hang the audit.
+            let waitTries = 0;
+            while (imgLoaded === false && waitTries < 5) {
               await Common.wait(1000);
+              waitTries++;
             }
           }
 
@@ -546,7 +549,7 @@ class Audit {
         }
 
         const extension = img.src.split('.').pop().toLowerCase();
-        if (['wepb', 'avif'].includes(extension) || extension.length > 4) {
+        if (['webp', 'avif'].includes(extension) || extension.length > 4) {
           return resolve(true);
         }
 
@@ -1137,7 +1140,7 @@ class Audit {
         const observer = new IntersectionObserver((entries) => {
           entries.forEach((entry) => {
             const img = entry.target;
-            const spanX = img.nextSibling;
+            const spanX = img.nextElementSibling;
 
             // Check if it is visible
             if (entry.isIntersecting) {
@@ -1182,7 +1185,7 @@ class Audit {
         const spanXs = await Common.getElements('.oxyplug-tech-seo-highlight:not(.positioned)');
         for (const spanX of spanXs) {
           spanX.classList.add('positioned');
-          const img = spanX.previousSibling;
+          const img = spanX.previousElementSibling;
           if (spanX && img) {
             applyStyles(spanX, img);
             observer.observe(img);
